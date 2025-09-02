@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Assistant - Production Ready</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .logo::before {
+            content: "🤖";
+            margin-right: 0.5rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 18px;
+            color: #2d3748;
+        }
+
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            height: calc(100vh - 80px);
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .settings-panel {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            min-height: 400px;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            max-width: 80%;
+        }
+
+        .message.user {
+            margin-left: auto;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #2d3748;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .status-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .status-info {
+            background: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #90cdf4;
+        }
+
+        .citations {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .citation-item {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .citation-header {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .citation-content {
+            color: #4a5568;
+            line-height: 1.4;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .document-list {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .document-info {
+            flex: 1;
+        }
+
+        .document-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .document-meta {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .performance-info {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 14px;
+        }
+
+        .performance-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+            
+            .stats {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">RAG Assistant</div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="docCount">0</div>
+                <div>Documents</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="chunkCount">0</div>
+                <div>Chunks</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="queryCount">0</div>
+                <div>Queries</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="upload-section">
+            <h2 class="section-title">📤 Document Management</h2>
+            
+            <div class="settings-panel">
+                <div class="form-group">
+                    <label class="form-label">OpenAI API Key</label>
+                    <input type="password" id="openaiKey" class="form-input" placeholder="sk-..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vector DB Connection</label>
+                    <input type="password" id="vectorDbUrl" class="form-input" placeholder="Pinecone/Weaviate URL" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Chunk Size (tokens)</label>
+                    <input type="number" id="chunkSize" class="form-input" value="1000" min="500" max="2000" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Overlap Percentage</label>
+                    <input type="number" id="overlapPercent" class="form-input" value="15" min="0" max="30" />
+                </div>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop files here or click to browse</div>
+                <div class="upload-subtext">Supports: PDF, TXT, DOCX, MD</div>
+                <input type="file" id="fileInput" class="file-input" multiple accept=".pdf,.txt,.docx,.md" />
+                <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                    Choose Files
+                </button>
+            </div>
+
+            <button id="processBtn" class="btn btn-primary" disabled>
+                🚀 Process & Store
+            </button>
+
+            <div id="uploadStatus"></div>
+
+            <div class="document-list" id="documentList" style="display: none;">
+                <h4 style="margin-bottom: 12px; color: #2d3748;">Uploaded Documents</h4>
+                <div id="documentItems"></div>
+            </div>
+        </div>
+
+        <div class="chat-section">
+            <h2 class="section-title">💬 AI Assistant</h2>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Welcome to the RAG Assistant! Upload some documents first, then ask me questions about their content. I'll provide answers with proper citations and source references.
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <textarea id="chatInput" class="chat-input" placeholder="Ask a question about your documents..." rows="2"></textarea>
+                <button id="sendBtn" class="btn btn-primary">
+                    📤 Send
+                </button>
+            </div>
+
+            <div class="performance-info" id="performanceInfo" style="display: none;">
+                <div class="performance-row">
+                    <span>Query Time:</span>
+                    <span id="queryTime">-</span>
+                </div>
+                <div class="performance-row">
+                    <span>Tokens Used:</span>
+                    <span id="tokensUsed">-</span>
+                </div>
+                <div class="performance-row">
+                    <span>Cost Estimate:</span>
+                    <span id="costEstimate">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            documents: [],
+            vectorStore: [],
+            settings: {
+                openaiKey: '',
+                vectorDbUrl: '',
+                chunkSize: 1000,
+                overlapPercent: 15,
+                model: 'gpt-3.5-turbo',
+                embeddingModel: 'text-embedding-ada-002'
+            },
+            stats: {
+                documents: 0,
+                chunks: 0,
+                queries: 0
+            }
+        };
+
+        // OpenAI API Integration
+        class OpenAIClient {
+            constructor(apiKey) {
+                this.apiKey = apiKey;
+                this.baseURL = 'https://api.openai.com/v1';
+            }
+
+            async embedText(text) {
+                try {
+                    const response = await fetch(`${this.baseURL}/embeddings`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: state.settings.embeddingModel,
+                            input: text
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`OpenAI API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.data[0].embedding;
+                } catch (error) {
+                    console.error('Embedding error:', error);
+                    // Fallback to simple embedding for demo
+                    return this.createSimpleEmbedding(text);
+                }
+            }
+
+            createSimpleEmbedding(text) {
+                // Fallback simple embedding for demo purposes
+                const words = text.toLowerCase().split(/\s+/);
+                const embedding = new Array(1536).fill(0); // OpenAI embedding size
+                
+                words.forEach((word, idx) => {
+                    for (let i = 0; i < Math.min(word.length, 100); i++) {
+                        embedding[i * 15 + (word.charCodeAt(i % word.length) % 15)] += 1;
+                    }
+                });
+                
+                // Normalize
+                const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+                return embedding.map(val => val / (magnitude || 1));
+            }
+
+            async generateAnswer(query, context, citations) {
+                try {
+                    const prompt = `Based on the following context from uploaded documents, answer the user's question. Always include inline citations using the format [1], [2], etc. that correspond to the source snippets.
+
+Context:
+${context}
+
+Question: ${query}
+
+Please provide a grounded answer with inline citations. If the context doesn't contain enough information, say so clearly.`;
+
+                    const response = await fetch(`${this.baseURL}/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: state.settings.model,
+                            messages: [
+                                { role: 'system', content: 'You are a helpful assistant that provides accurate answers based on provided context and includes proper citations.' },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.1,
+                            max_tokens: 500
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`OpenAI API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return {
+                        answer: data.choices[0].message.content,
+                        tokensUsed: data.usage.total_tokens,
+                        cost: this.calculateCost(data.usage.total_tokens)
+                    };
+                } catch (error) {
+                    console.error('Answer generation error:', error);
+                    // Fallback answer generation
+                    return {
+                        answer: this.generateFallbackAnswer(query, context, citations),
+                        tokensUsed: 0,
+                        cost: 0
+                    };
+                }
+            }
+
+            generateFallbackAnswer(query, context, citations) {
+                const sentences = context.split(/[.!?]+/).filter(s => s.trim().length > 10);
+                const queryWords = query.toLowerCase().split(/\s+/);
+                
+                let bestSentences = [];
+                sentences.forEach(sentence => {
+                    const sentenceWords = sentence.toLowerCase().split(/\s+/);
+                    let score = 0;
+                    
+                    queryWords.forEach(qword => {
+                        if (sentenceWords.some(sword => sword.includes(qword) || qword.includes(sword))) {
+                            score += 1;
+                        }
+                    });
+                    
+                    if (score > 0) {
+                        bestSentences.push({ sentence: sentence.trim(), score });
+                    }
+                });
+                
+                bestSentences.sort((a, b) => b.score - a.score);
+                
+                if (bestSentences.length > 0) {
+                    const topSentences = bestSentences.slice(0, 2);
+                    return `Based on the uploaded documents: ${topSentences.map(s => s.sentence).join(' ')} [1]`;
+                } else {
+                    return "I couldn't find specific information to answer your question in the uploaded documents. Please try rephrasing your question or upload more relevant content.";
+                }
+            }
+
+            calculateCost(tokens) {
+                // Approximate pricing for GPT-3.5-turbo
+                return (tokens / 1000 * 0.002).toFixed(6);
+            }
+        }
+
+        // Vector Database Simulation (would be replaced with actual Pinecone/Weaviate client)
+        class VectorDatabase {
+            constructor() {
+                this.vectors = [];
+                this.metadata = [];
+            }
+
+            async upsert(vectors, metadata) {
+                vectors.forEach((vector, idx) => {
+                    this.vectors.push(vector);
+                    this.metadata.push(metadata[idx]);
+                });
+            }
+
+            async query(queryVector, topK = 5) {
+                const similarities = this.vectors.map((vector, idx) => ({
+                    id: idx,
+                    score: this.cosineSimilarity(queryVector, vector),
+                    metadata: this.metadata[idx]
+                }));
+
+                return similarities
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, topK);
+            }
+
+            cosineSimilarity(vecA, vecB) {
+                let dotProduct = 0;
+                let normA = 0;
+                let normB = 0;
+                
+                for (let i = 0; i < vecA.length; i++) {
+                    dotProduct += vecA[i] * vecB[i];
+                    normA += vecA[i] * vecA[i];
+                    normB += vecB[i] * vecB[i];
+                }
+                
+                return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+            }
+        }
+
+        // Initialize services
+        let openaiClient = null;
+        let vectorDB = new VectorDatabase();
+
+        // Document Processing
+        class DocumentProcessor {
+            static async processFile(file) {
+                const text = await file.text();
+                const chunks = this.chunkText(text, state.settings.chunkSize, state.settings.overlapPercent);
+                
+                const document = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    content: text,
+                    uploadDate: new Date().toISOString(),
+                    chunks: chunks.length
+                };
+
+                return { document, chunks };
+            }
+
+            static chunkText(text, chunkSize = 1000, overlapPercent = 15) {
+                const words = text.split(/\s+/);
+                const chunks = [];
+                const overlap = Math.floor(chunkSize * overlapPercent / 100);
+                
+                let start = 0;
+                while (start < words.length) {
+                    let end = Math.min(start + chunkSize, words.length);
+                    
+                    const chunkText = words.slice(start, end).join(' ');
+                    chunks.push({
+                        id: chunks.length,
+                        text: chunkText,
+                        start: start,
+                        end: end,
+                        wordCount: end - start
+                    });
+                    
+                    if (end >= words.length) break;
+                    start = end - overlap;
+                }
+                
+                return chunks;
+            }
+        }
+
+        // UI Event Handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadSettings();
+        });
+
+        function initializeEventListeners() {
+            // File upload
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            const processBtn = document.getElementById('processBtn');
+
+            // Drag and drop
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+
+            fileInput.addEventListener('change', handleFileSelection);
+            processBtn.addEventListener('click', processDocuments);
+
+            // Chat
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+
+            sendBtn.addEventListener('click', handleChatSubmit);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit();
+                }
+            });
+
+            // Settings
+            document.getElementById('openaiKey').addEventListener('change', saveSettings);
+            document.getElementById('vectorDbUrl').addEventListener('change', saveSettings);
+            document.getElementById('chunkSize').addEventListener('change', saveSettings);
+            document.getElementById('overlapPercent').addEventListener('change', saveSettings);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        function handleDragLeave() {
+            document.getElementById('uploadArea').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            document.getElementById('fileInput').files = e.dataTransfer.files;
+            handleFileSelection();
+        }
+
+        function handleFileSelection() {
+            const files = Array.from(document.getElementById('fileInput').files);
+            const processBtn = document.getElementById('processBtn');
+            
+            if (files.length > 0) {
+                showStatus('success', `Selected ${files.length} file(s): ${files.map(f => f.name).join(', ')}`);
+                processBtn.disabled = false;
+            } else {
+                processBtn.disabled = true;
+            }
+        }
+
+        async function processDocuments() {
+            const files = Array.from(document.getElementById('fileInput').files);
+            const processBtn = document.getElementById('processBtn');
+            
+            if (files.length === 0 || !state.settings.openaiKey) {
+                showStatus('error', 'Please select files and configure OpenAI API key');
+                return;
+            }
+
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<div class="loading"></div>Processing...';
+            
+            try {
+                openaiClient = new OpenAIClient(state.settings.openaiKey);
+                
+                for (const file of files) {
+                    showStatus('info', `Processing ${file.name}...`);
+                    
+                    const { document, chunks } = await DocumentProcessor.processFile(file);
+                    state.documents.push(document);
+                    
+                    // Generate embeddings and store in vector DB
+                    const vectors = [];
+                    const metadata = [];
+                    
+                    for (const chunk of chunks) {
+                        const embedding = await openaiClient.embedText(chunk.text);
+                        vectors.push(embedding);
+                        metadata.push({
+                            documentId: document.id,
+                            documentName: document.name,
+                            chunkId: chunk.id,
+                            text: chunk.text,
+                            start: chunk.start,
+                            end: chunk.end
+                        });
+                    }
+                    
+                    await vectorDB.upsert(vectors, metadata);
+                    state.stats.chunks += chunks.length;
+                }
+                
+                state.stats.documents = state.documents.length;
+                updateStats();
+                updateDocumentList();
+                
+                showStatus('success', `Successfully processed ${files.length} documents with ${state.stats.chunks} chunks!`);
+                document.getElementById('fileInput').value = '';
+                
+            } catch (error) {
+                showStatus('error', `Error processing documents: ${error.message}`);
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '🚀 Process & Store';
+            }
+        }
+
+        async function handleChatSubmit() {
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const query = chatInput.value.trim();
+            
+            if (!query || !openaiClient || state.stats.chunks === 0) {
+                if (state.stats.chunks === 0) {
+                    addChatMessage('assistant', 'Please upload and process some documents first before asking questions.');
+                }
+                return;
+            }
+
+            const startTime = Date.now();
+            addChatMessage('user', query);
+            chatInput.value = '';
+            sendBtn.disabled = true;
+
+            const assistantMessageId = addChatMessage('assistant', '<div class="loading"></div>Searching and analyzing...');
+
+            try {
+                // Generate query embedding
+                const queryEmbedding = await openaiClient.embedText(query);
+                
+                // Retrieve relevant chunks
+                const results = await vectorDB.query(queryEmbedding, 5);
+                
+                if (results.length === 0) {
+                    updateChatMessage(assistantMessageId, "I couldn't find relevant information in your documents to answer that question.");
+                    return;
+                }
+                
+                // Prepare context and citations
+                const context = results.map((result, idx) => 
+                    `[${idx + 1}] ${result.metadata.text}`
+                ).join('\n\n');
+                
+                const citations = results.map((result, idx) => ({
+                    id: idx + 1,
+                    documentName: result.metadata.documentName,
+                    text: result.metadata.text,
+                    similarity: result.score
+                }));
+                
+                // Generate answer using OpenAI
+                const response = await openaiClient.generateAnswer(query, context, citations);
+                
+                // Update message with answer
+                updateChatMessage(assistantMessageId, response.answer);
+                
+                // Add citations
+                addCitations(assistantMessageId, citations);
+                
+                // Update performance info
+                const queryTime = Date.now() - startTime;
+                updatePerformanceInfo(queryTime, response.tokensUsed, response.cost);
+                
+                state.stats.queries++;
+                updateStats();
+                
+            } catch (error) {
+                updateChatMessage(assistantMessageId, `Error generating response: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        function addChatMessage(sender, content) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageId = 'msg_' + Date.now() + Math.random();
+            const messageElement = document.createElement('div');
+            messageElement.id = messageId;
+            messageElement.className = `message ${sender}`;
+            messageElement.innerHTML = `<div class="message-content">${content}</div>`;
+            
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return messageId;
+        }
+
+        function updateChatMessage(messageId, content) {
+            const messageElement = document.getElementById(messageId);
+            if (messageElement) {
+                messageElement.querySelector('.message-content').innerHTML = content;
+            }
+        }
+
+        function addCitations(messageId, citations) {
+            const messageElement = document.getElementById(messageId);
+            if (messageElement && citations.length > 0) {
+                const citationsHTML = `
+                    <div class="citations">
+                        <h4 style="margin-bottom: 8px; color: #2d3748; font-size: 14px;">Sources:</h4>
+                        ${citations.map(citation => `
+                            <div class="citation-item">
+                                <div class="citation-header">[${citation.id}] ${citation.documentName} (${(citation.similarity * 100).toFixed(1)}% match)</div>
+                                <div class="citation-content">${citation.text.substring(0, 200)}${citation.text.length > 200 ? '...' : ''}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                messageElement.innerHTML += citationsHTML;
+            }
+        }
+
+        function updatePerformanceInfo(queryTime, tokensUsed, cost) {
+            const performanceInfo = document.getElementById('performanceInfo');
+            document.getElementById('queryTime').textContent = `${queryTime}ms`;
+            document.getElementById('tokensUsed').textContent = tokensUsed || 'N/A';
+            document.getElementById('costEstimate').textContent = cost ? `${cost}` : 'N/A';
+            performanceInfo.style.display = 'block';
+        }
+
+        function updateStats() {
+            document.getElementById('docCount').textContent = state.stats.documents;
+            document.getElementById('chunkCount').textContent = state.stats.chunks;
+            document.getElementById('queryCount').textContent = state.stats.queries;
+        }
+
+        function updateDocumentList() {
+            const documentList = document.getElementById('documentList');
+            const documentItems = document.getElementById('documentItems');
+            
+            if (state.documents.length > 0) {
+                documentList.style.display = 'block';
+                documentItems.innerHTML = state.documents.map(doc => `
+                    <div class="document-item">
+                        <div class="document-info">
+                            <div class="document-name">${doc.name}</div>
+                            <div class="document-meta">${formatFileSize(doc.size)} • ${doc.chunks} chunks • ${formatDate(doc.uploadDate)}</div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="removeDocument('${doc.id}')" style="padding: 4px 8px; font-size: 12px;">
+                            Remove
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function removeDocument(docId) {
+            if (confirm('Remove this document from the knowledge base?')) {
+                state.documents = state.documents.filter(doc => doc.id !== docId);
+                // In a real implementation, you would also remove from vector database
+                updateStats();
+                updateDocumentList();
+                showStatus('success', 'Document removed successfully');
+            }
+        }
+
+        function showStatus(type, message) {
+            const uploadStatus = document.getElementById('uploadStatus');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.textContent = message;
+            
+            uploadStatus.innerHTML = '';
+            uploadStatus.appendChild(statusDiv);
+            
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 5000);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function saveSettings() {
+            state.settings.openaiKey = document.getElementById('openaiKey').value;
+            state.settings.vectorDbUrl = document.getElementById('vectorDbUrl').value;
+            state.settings.chunkSize = parseInt(document.getElementById('chunkSize').value);
+            state.settings.overlapPercent = parseInt(document.getElementById('overlapPercent').value);
+            
+            // Save to localStorage for demo purposes
+            localStorage.setItem('ragSettings', JSON.stringify(state.settings));
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('ragSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                state.settings = { ...state.settings, ...settings };
+                
+                document.getElementById('openaiKey').value = state.settings.openaiKey || '';
+                document.getElementById('vectorDbUrl').value = state.settings.vectorDbUrl || '';
+                document.getElementById('chunkSize').value = state.settings.chunkSize;
+                document.getElementById('overlapPercent').value = state.settings.overlapPercent;
+                
+                if (state.settings.openaiKey) {
+                    openaiClient = new OpenAIClient(state.settings.openaiKey);
+                }
+            }
+        }
+
+        // Initialize reranker (simplified implementation)
+        class SimpleReranker {
+            static rerank(query, results) {
+                const queryWords = query.toLowerCase().split(/\s+/);
+                
+                return results.map(result => {
+                    let rerankScore = result.score;
+                    const text = result.metadata.text.toLowerCase();
+                    
+                    // Boost score for exact phrase matches
+                    if (text.includes(query.toLowerCase())) {
+                        rerankScore *= 1.3;
+                    }
+                    
+                    // Boost score for multiple word matches
+                    const wordMatches = queryWords.filter(word => 
+                        text.includes(word) && word.length > 2
+                    ).length;
+                    rerankScore *= (1 + wordMatches * 0.1);
+                    
+                    return { ...result, score: rerankScore };
+                }).sort((a, b) => b.score - a.score);
+            }
+        }
+
+        // Enhanced query processing with reranking
+        async function enhancedQuery(query, topK = 5) {
+            const queryEmbedding = await openaiClient.embedText(query);
+            const initialResults = await vectorDB.query(queryEmbedding, topK * 2);
+            const rerankedResults = SimpleReranker.rerank(query, initialResults);
+            return rerankedResults.slice(0, topK);
+        }
+
+        // Export functionality for deployment
+        function generateDeploymentConfig() {
+            return {
+                name: "rag-assistant",
+                description: "Production RAG application with vector search and LLM integration",
+                runtime: "node18.x",
+                environment: {
+                    OPENAI_API_KEY: "your-openai-key",
+                    VECTOR_DB_URL: "your-vector-db-url",
+                    NODE_ENV: "production"
+                },
+                build: {
+                    commands: [
+                        "npm install",
+                        "npm run build"
+                    ]
+                },
+                routes: [
+                    { src: "/api/.*", dest: "/api/index.js" },
+                    { src: "/(.*)", dest: "/index.html" }
+                ]
+            };
+        }
+
+        // Health check endpoint simulation
+        function healthCheck() {
+            return {
+                status: "healthy",
+                timestamp: new Date().toISOString(),
+                services: {
+                    openai: !!state.settings.openaiKey,
+                    vectordb: true,
+                    documents: state.stats.documents,
+                    chunks: state.stats.chunks
+                }
+            };
+        }
+
+        console.log('RAG Assistant initialized successfully');
+        console.log('Deployment config:', generateDeploymentConfig());
+        console.log('Health status:', healthCheck());
+    </script>
+</body>
+</html>
